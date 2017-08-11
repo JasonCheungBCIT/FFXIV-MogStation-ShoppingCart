@@ -21,6 +21,16 @@ chrome.extension.sendMessage({}, function(response) {
 		}
 		// ----------------------------------------------------------		
 			
+		// ----------------------------------------------------------		
+		// Helpers 
+		function mapToJson(map) {
+			return JSON.stringify([...map]);
+		}
+		function jsonToMap(jsonStr) {
+			return new Map(JSON.parse(jsonStr));
+		}
+		// ----------------------------------------------------------		
+
 
 		// ----------------------------------------------------------		
 		// Debug buttons 
@@ -37,12 +47,11 @@ chrome.extension.sendMessage({}, function(response) {
 		var $newDiv2 = $("<div class='testButton'>Reset storage</div>");
 		$newDiv2.click(function() {
 			console.log("Clicked on new div 2");
-			var ids = [
-				// new Product("111", "Test Product 1 ","10.00","img_link"),
-				// new Product("222", "Test Product 2 ","20.00","img_link"),
-				// new Product("333", "Test Product 3 ","30.00","img_link"),
-			];
-			chrome.storage.sync.set({ "shoppingCart": ids }, function(){
+			var ids = new Map();
+			// ids.set("foo", "bar");
+			console.log(ids);
+			var serialized = mapToJson(ids);
+			chrome.storage.sync.set({ "shoppingCart": serialized }, function(){
 				//  A data saved callback omg so fancy
 			});
 		});
@@ -50,20 +59,18 @@ chrome.extension.sendMessage({}, function(response) {
 		var $newDiv3 = $("<div class='testButton'>Check storage</div>");
 		$newDiv3.click(function() {
 			console.log("Clicked on new div 3");        
-			chrome.storage.sync.get(/* String or Array */["shoppingCart"], function(items){
-				//  items = [ { "yourBody": "myBody" } ]
-				console.log(items);	
-			});
 			chrome.storage.sync.get(/* String or Array */"shoppingCart", function(items){
 				//  items = [ { "yourBody": "myBody" } ]
-				console.log(items["shoppingCart"]);
-				console.log(items["shoppingCart"]["shoppingCart"]);		
-				console.log(items.shoppingCart);										
+				console.log(items);
+				var products = jsonToMap(items.shoppingCart);
+				console.log(products);
 			});
 		});
 
 
 		// Shopping Cart Initialization 
+		var cachedCart = new Map();
+
 		var currentSessionId = $("input[name='_st_acc']").attr('value');
 		console.log(currentSessionId);
 
@@ -89,21 +96,21 @@ chrome.extension.sendMessage({}, function(response) {
 		// ----------------------------------------------------------
 		// Adding buttons into page 
 		function createAddToCartButton(product) {
-			var btn = $("<button value=" + product.id + ">Add to Cart</button>");
+			var btn = $("<button value=" + product.id + ">Add to Cart</button>");	// TODO: Product id here is useless. 
 			btn.click(function() {
 				var itemId = $(this).attr("value");
 				
-				// retrieve shopping cart 
+				// retrieve shopping cart
 				chrome.storage.sync.get("shoppingCart", function(items){
 					
 					console.log(items["shoppingCart"]);
 
-					items.shoppingCart.push(product);
+					// add or update cart
+					var shoppingCart = jsonToMap(items.shoppingCart);
+					shoppingCart.set(product.name, product);
 
-					// add to  shopping cart 
-					chrome.storage.sync.set({"shoppingCart": items.shoppingCart}, function() {});
-					
-					console.log(items);
+					// save changes to storage 
+					chrome.storage.sync.set({"shoppingCart": mapToJson(shoppingCart)}, function() {});					
 				});
 			});
 			return btn;
@@ -136,16 +143,17 @@ chrome.extension.sendMessage({}, function(response) {
 		function updateCart() {
 			console.log("updating cart");
 			chrome.storage.sync.get("shoppingCart", function(items) {
+
+				// retrieve shopping cart map
+				var shoppingCart = jsonToMap(items.shoppingCart);
+
 				// keep track of total cost 
 				var total = 0;
 
 				// clear the list 
 				$itemList.html('');
 
-				// go thru all products in shopping cart 
-				for (var i = 0; i < items["shoppingCart"].length; i++) {
-					// retrieve the product 
-					var product = items["shoppingCart"][i];
+				for (var [key, product] of shoppingCart) {
 					
 					// create the parent DOM element 
 					var $item = $("<tr class='cartItem'></tr>");
@@ -165,15 +173,16 @@ chrome.extension.sendMessage({}, function(response) {
 					}
 					$removeBtn.click({product: product}, onCartItemRemoveClick);
 					
-
+					// add DOM elements to shopping cart
 					$item.append($name, $price, $buyBtn, $removeBtn, $previewImg);
 					$itemList.append($item);
 
-					// update the total 
+					// calculate the total 
 					total += parseFloat(product.price);
 				}
-				
-				$itemCount.html("(" + items.shoppingCart.length + ")");
+
+				// update the total display
+				$itemCount.html("(" + shoppingCart.size + ")");
 				$totalCost.html("Total: $" + total.toFixed(2));
 			});
 		}
@@ -181,34 +190,23 @@ chrome.extension.sendMessage({}, function(response) {
 		function onCartItemClick(event) {
 			$input = $('<input name="_pr_selectItem_string" type="radio" value=' + event.data.product.id + ' id="skuidFOOBAR" checked>');
 			$("form").append($input);	
-			location.href = "javascript:contentEvent('select', 'skuidFOOBAR');"
+			location.href = "javascript:contentEvent('select', 'skuidFOOBAR');";	// using function from original page. 
 		}
 
 		function onCartItemRemoveClick(event) {
 			// retrieve shopping cart 
 			chrome.storage.sync.get("shoppingCart", function(items){
-				
-				console.log(items["shoppingCart"]);
+				var shoppingCart = jsonToMap(items.shoppingCart);
+				var productName = event.data.product.name; 
 
-				var targetIndex = -1;
-
-				console.log(event.data.product);
-				for (var i = 0; i < items.shoppingCart.length; i++) {
-					console.log(items.shoppingCart[i].name);
-					if (items.shoppingCart[i].name == event.data.product.name) {
-						targetIndex = i;
-						break;
-					}
-				}
-
-				if (targetIndex == -1) {
-					console.log("Could not remove item from cart - item not found");
+				// remove product if found
+				if (shoppingCart.has(productName)) {
+					console.log("Removing " + productName + " from shopping cart");
+					shoppingCart.delete(productName);
+					chrome.storage.sync.set("shoppingCart", mapToJson(shoppingCart));
 				} else {
-					items.shoppingCart.splice(targetIndex, 1);	// remove element from array 
-					chrome.storage.sync.set({"shoppingCart": items.shoppingCart}, function() {});				
+					console.log("Warning: Could not remove item " + productName + " from cart - item not found");
 				}
-
-				console.log(items);
 			});
 		}
 
