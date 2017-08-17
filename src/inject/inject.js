@@ -81,7 +81,7 @@ chrome.extension.sendMessage({}, function(response) {
 					// create the parent DOM element 
 					var $item = $("<tr class='cartItem'></tr>");
 					var $name = $("<td><a>" + product.name + "</a></td>");
-					var $price = $("<td>" + product.price + "</td>");
+					var $price = $("<td>$" + product.price + "</td>");
 					var $removeBtn = $("<td><img class='cartIcon' src=" + chrome.extension.getURL('img/remove_icon.png') + "></td>");
 					var $previewImg = $("<div class='hover_img_container'><div class='hover_img_border'><img src=" + product.imgUrl + "></div></div>")
 
@@ -201,6 +201,9 @@ chrome.extension.sendMessage({}, function(response) {
 				updateCart();
 				console.log("Updated " + updateCount + " items.");
 			}
+
+			var t2 = performance.now(); 
+			console.log("Final loading finished. Took " + (t2 - t0) + " milliseconds.");		
 		});
 		// ----------------------------------------------------------
 
