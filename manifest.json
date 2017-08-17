@@ -46,6 +46,7 @@
   "web_accessible_resources": [
     "src/js/store.js",
     "img/buy_icon.png",
-    "img/remove_icon.png"
+    "img/remove_icon.png",
+    "img/cart_icon.png"    
   ]
 }
