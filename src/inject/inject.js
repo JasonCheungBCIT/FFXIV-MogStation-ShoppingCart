@@ -160,9 +160,16 @@ chrome.extension.sendMessage({}, function(response) {
 
 		// Update cart session ID and adding buttons to items 
 		chrome.storage.sync.get("shoppingCart", function(items) {
-			var cachedCart = jsonToMap(items.shoppingCart);
 
 			var updateCount = 0; // keep track of how many items were updated (debug)
+
+			var cachedCart;
+			if (items.hasOwnProperty(shoppingCart)) {
+				cachedCart = jsonToMap(items.shoppingCart);
+			} else {
+				cachedCart = new Map();	
+				updateCount++;	// force an update
+			}
 
 			var $items = $(".content_box4"); // each item 
 			$items.each( function(index, element) {
@@ -197,9 +204,12 @@ chrome.extension.sendMessage({}, function(response) {
 
 			// save item updates in storage
 			if (updateCount > 0) {
-				chrome.storage.sync.set({"shoppingCart": mapToJson(cachedCart)}, function(){});
+				chrome.storage.sync.set({"shoppingCart": mapToJson(cachedCart)}, function(){
+					updateCart();
+					console.log("Updated " + updateCount + " items.");
+				});
+			} else {
 				updateCart();
-				console.log("Updated " + updateCount + " items.");
 			}
 
 			var t2 = performance.now(); 
@@ -207,9 +217,7 @@ chrome.extension.sendMessage({}, function(response) {
 		});
 		// ----------------------------------------------------------
 
-		
-		updateCart();
-		
+				
 		var t1 = performance.now();
 		console.log("Extension loaded. Took " + (t1 - t0) + " milliseconds.");
 	}

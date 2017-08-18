@@ -1,6 +1,6 @@
 {
   "name": "FFXIV - MogStation Shopping Cart",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "manifest_version": 2,
   "description": "Add a shopping cart to Mogstation's Optional Items section.",
   "homepage_url": "https://secure.square-enix.com/account/app/svc/ffxivshopitemshop",
